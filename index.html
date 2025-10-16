@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Interactiva 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.150.0/build/three.module.js"
+        }
+    }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
+    <div id="app">
+        <!-- Header -->
+        <header class="bg-black bg-opacity-50 text-white p-6 backdrop-blur-sm">
+            <h1 class="text-4xl font-bold text-center mb-2">🔬 Física Interactiva 3D</h1>
+            <p class="text-center text-gray-300">Visualiza y comprende los fenómenos físicos</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-black bg-opacity-30 backdrop-blur-sm">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-wrap gap-2 py-4">
+                    <button @click="modulo = 'cinematica'"
+                            :class="modulo === 'cinematica' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'"
+                            class="px-6 py-3 rounded-lg text-white font-semibold transition-all">
+                        🎯 Cinemática
+                    </button>
+                    <button @click="modulo = 'dinamica'"
+                            :class="modulo === 'dinamica' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'"
+                            class="px-6 py-3 rounded-lg text-white font-semibold transition-all">
+                        ⚙️ Dinámica
+                    </button>
+                    <button @click="modulo = 'optica'"
+                            :class="modulo === 'optica' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'"
+                            class="px-6 py-3 rounded-lg text-white font-semibold transition-all">
+                        🔬 Óptica
+                    </button>
+                    <button @click="modulo = 'electromagnetismo'"
+                            :class="modulo === 'electromagnetismo' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'"
+                            class="px-6 py-3 rounded-lg text-white font-semibold transition-all">
+                        🧲 Electromagnetismo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="container mx-auto px-4 py-8">
+            <!-- Módulo de Cinemática -->
+            <div v-show="modulo === 'cinematica'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Panel de Control -->
+                <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-6 text-white">
+                    <h2 class="text-2xl font-bold mb-4">🎯 Lanzamiento de Proyectiles</h2>
+                    <p class="text-gray-300 mb-6">Ajusta los parámetros y observa la trayectoria.</p>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block mb-2 font-semibold">Ángulo: <span class="text-yellow-300">{{ang}}°</span></label>
+                            <input type="range" v-model.number="ang" min="5" max="85" 
+                                   class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2 font-semibold">Velocidad: <span class="text-yellow-300">{{vel}} m/s</span></label>
+                            <input type="range" v-model.number="vel" min="10" max="50" 
+                                   class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+
+                        <div>
+                            <label class="block mb-2 font-semibold">Gravedad: <span class="text-yellow-300">{{g}} m/s²</span></label>
+                            <input type="range" v-model.number="g" min="1" max="15" step="0.5"
+                                   class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+
+                        <button @click="disparar" 
+                                :disabled="volando"
+                                class="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-lg transition-all">
+                            🚀 Lanzar
+                        </button>
+
+                        <button @click="limpiar" 
+                                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-all">
+                            🔄 Limpiar
+                        </button>
+                    </div>
+
+                    <!-- Resultados -->
+                    <div v-if="datos" class="mt-6 bg-black bg-opacity-30 rounded-lg p-4">
+                        <h3 class="font-bold text-lg mb-3">📊 Resultados:</h3>
+                        <div class="text-sm space-y-1">
+                            <p><span class="text-blue-300">Alcance:</span> {{datos.r}} m</p>
+                            <p><span class="text-green-300">Altura máx:</span> {{datos.h}} m</p>
+                            <p><span class="text-yellow-300">Tiempo:</span> {{datos.t}} s</p>
+                            <p><span class="text-purple-300">Vx:</span> {{datos.vx}} m/s</p>
+                            <p><span class="text-pink-300">Vy:</span> {{datos.vy}} m/s</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas -->
+                <div class="lg:col-span-2 bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4">
+                    <canvas id="micanvas" width="800" height="600" class="w-full rounded-lg bg-gray-900"></canvas>
+                    <div class="mt-4 text-white text-sm bg-black bg-opacity-50 rounded-lg p-3">
+                        <p class="mb-1">🎨 <strong>Visualización Canvas 2D:</strong></p>
+                        <ul class="list-disc list-inside space-y-1 text-gray-300">
+                            <li><span class="text-yellow-400">Amarillo:</span> Trayectoria parabólica</li>
+                            <li><span class="text-red-400">Rojo:</span> Proyectil</li>
+                            <li><span class="text-blue-400">Azul:</span> Vector horizontal (Vx)</li>
+                            <li><span class="text-green-400">Verde:</span> Vector vertical (Vy)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Otros Módulos -->
+            <div v-show="modulo !== 'cinematica'" class="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-8 text-white text-center">
+                <h2 class="text-3xl font-bold mb-4">
+                    <span v-if="modulo === 'dinamica'">⚙️ Planos Inclinados</span>
+                    <span v-if="modulo === 'optica'">🔬 Lentes y Espejos</span>
+                    <span v-if="modulo === 'electromagnetismo'">🧲 Regla de la Mano Derecha</span>
+                </h2>
+                <div class="flex items-center justify-center h-96">
+                    <div>
+                        <div class="text-8xl mb-4">🚧</div>
+                        <p class="text-xl text-gray-300 mb-4">Módulo en desarrollo</p>
+                        <p class="text-gray-400">Próximamente disponible</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    modulo: 'cinematica',
+                    ang: 45,
+                    vel: 30,
+                    g: 9.8,
+                    datos: null,
+                    volando: false,
+                    canvas: null,
+                    ctx: null,
+                    escala: 10,
+                    offsetX: 50,
+                    offsetY: 500
+                };
+            },
+            mounted() {
+                this.canvas = document.getElementById('micanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.dibujarEscena();
+            },
+            methods: {
+                dibujarEscena() {
+                    const c = this.ctx;
+                    const w = this.canvas.width;
+                    const h = this.canvas.height;
+                    
+                    // Fondo
+                    c.fillStyle = '#0a0a1a';
+                    c.fillRect(0, 0, w, h);
+                    
+                    // Cuadrícula
+                    c.strokeStyle = '#333366';
+                    c.lineWidth = 1;
+                    for (let x = 0; x < w; x += 40) {
+                        c.beginPath();
+                        c.moveTo(x, 0);
+                        c.lineTo(x, h);
+                        c.stroke();
+                    }
+                    for (let y = 0; y < h; y += 40) {
+                        c.beginPath();
+                        c.moveTo(0, y);
+                        c.lineTo(w, y);
+                        c.stroke();
+                    }
+                    
+                    // Suelo
+                    c.fillStyle = '#2a4858';
+                    c.fillRect(0, this.offsetY, w, h - this.offsetY);
+                    
+                    // Línea del suelo
+                    c.strokeStyle = '#00aaff';
+                    c.lineWidth = 3;
+                    c.beginPath();
+                    c.moveTo(0, this.offsetY);
+                    c.lineTo(w, this.offsetY);
+                    c.stroke();
+                    
+                    // Cañón
+                    c.fillStyle = '#555555';
+                    c.fillRect(this.offsetX - 15, this.offsetY - 10, 30, 10);
+                    c.beginPath();
+                    c.arc(this.offsetX, this.offsetY - 5, 8, 0, Math.PI * 2);
+                    c.fill();
+                },
+                
+                disparar() {
+                    if (this.volando) return;
+                    
+                    const rad = this.ang * Math.PI / 180;
+                    const vx = this.vel * Math.cos(rad);
+                    const vy = this.vel * Math.sin(rad);
+                    const tTotal = (2 * vy) / this.g;
+                    const alcance = vx * tTotal;
+                    const hMax = (vy * vy) / (2 * this.g);
+                    
+                    this.datos = {
+                        vx: vx.toFixed(1),
+                        vy: vy.toFixed(1),
+                        r: alcance.toFixed(1),
+                        h: hMax.toFixed(1),
+                        t: tTotal.toFixed(2)
+                    };
+                    
+                    this.dibujarEscena();
+                    this.dibujarTrayectoria(vx, vy, tTotal);
+                    this.animarProyectil(vx, vy, tTotal);
+                },
+                
+                dibujarTrayectoria(vx, vy, tTotal) {
+                    const c = this.ctx;
+                    c.strokeStyle = '#ffff00';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    
+                    let primero = true;
+                    for (let t = 0; t <= tTotal; t += 0.05) {
+                        const x = this.offsetX + vx * t * this.escala;
+                        const yPos = vy * t - 0.5 * this.g * t * t;
+                        const y = this.offsetY - yPos * this.escala;
+                        
+                        if (primero) {
+                            c.moveTo(x, y);
+                            primero = false;
+                        } else {
+                            c.lineTo(x, y);
+                        }
+                    }
+                    c.stroke();
+                },
+                
+                animarProyectil(vx, vy, tTotal) {
+                    this.volando = true;
+                    let t = 0;
+                    const dt = 0.03;
+                    
+                    const frame = () => {
+                        if (t > tTotal) {
+                            this.volando = false;
+                            return;
+                        }
+                        
+                        const xPos = vx * t;
+                        const yPos = vy * t - 0.5 * this.g * t * t;
+                        
+                        if (yPos >= 0) {
+                            this.dibujarEscena();
+                            this.dibujarTrayectoria(vx, vy, tTotal);
+                            
+                            const px = this.offsetX + xPos * this.escala;
+                            const py = this.offsetY - yPos * this.escala;
+                            
+                            // Proyectil
+                            this.ctx.fillStyle = '#ff3333';
+                            this.ctx.beginPath();
+                            this.ctx.arc(px, py, 8, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            
+                            // Vectores
+                            const vyActual = vy - this.g * t;
+                            const escVec = 3;
+                            
+                            // Vector Vx (azul)
+                            this.dibujarFlecha(px, py, px + vx * escVec, py, '#0088ff');
+                            
+                            // Vector Vy (verde)
+                            this.dibujarFlecha(px, py, px, py - vyActual * escVec, '#00ff00');
+                            
+                            // Vector total (rojo)
+                            this.dibujarFlecha(px, py, px + vx * escVec, py - vyActual * escVec, '#ff0000');
+                            
+                            t += dt;
+                            requestAnimationFrame(frame);
+                        } else {
+                            this.volando = false;
+                        }
+                    };
+                    
+                    frame();
+                },
+                
+                dibujarFlecha(x1, y1, x2, y2, color) {
+                    const c = this.ctx;
+                    c.strokeStyle = color;
+                    c.fillStyle = color;
+                    c.lineWidth = 2;
+                    
+                    // Línea
+                    c.beginPath();
+                    c.moveTo(x1, y1);
+                    c.lineTo(x2, y2);
+                    c.stroke();
+                    
+                    // Punta
+                    const ang = Math.atan2(y2 - y1, x2 - x1);
+                    const largo = 10;
+                    c.beginPath();
+                    c.moveTo(x2, y2);
+                    c.lineTo(x2 - largo * Math.cos(ang - Math.PI / 6), y2 - largo * Math.sin(ang - Math.PI / 6));
+                    c.lineTo(x2 - largo * Math.cos(ang + Math.PI / 6), y2 - largo * Math.sin(ang + Math.PI / 6));
+                    c.closePath();
+                    c.fill();
+                },
+                
+                limpiar() {
+                    this.volando = false;
+                    this.datos = null;
+                    this.dibujarEscena();
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
