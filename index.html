@@ -118,10 +118,77 @@
                 </div>
             </div>
 
+            <!-- Módulo de Dinámica -->
+            <div v-show="modulo === 'dinamica'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Panel de Control -->
+                <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-6 text-white">
+                    <h2 class="text-2xl font-bold mb-4">⚙️ Planos Inclinados</h2>
+                    <p class="text-gray-300 mb-6">Ajusta el ángulo y observa la descomposición de fuerzas.</p>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block mb-2 font-semibold">Ángulo del plano: <span class="text-yellow-300">{{angPlano}}°</span></label>
+                            <input type="range" v-model.number="angPlano" min="0" max="60" 
+                                   class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer"
+                                   @input="actualizarPlano">
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2 font-semibold">Masa del bloque: <span class="text-yellow-300">{{masa}} kg</span></label>
+                            <input type="range" v-model.number="masa" min="1" max="20" 
+                                   class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer"
+                                   @input="actualizarPlano">
+                        </div>
+
+                        <div>
+                            <label class="block mb-2 font-semibold">Gravedad: <span class="text-yellow-300">{{gPlano}} m/s²</span></label>
+                            <input type="range" v-model.number="gPlano" min="5" max="15" step="0.5"
+                                   class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer"
+                                   @input="actualizarPlano">
+                        </div>
+
+                        <button @click="toggleVectores" 
+                                class="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all">
+                            {{mostrarVectores ? '👁️ Ocultar' : '👁️ Mostrar'}} Vectores
+                        </button>
+
+                        <button @click="resetearPlano" 
+                                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-all">
+                            🔄 Resetear
+                        </button>
+                    </div>
+
+                    <!-- Resultados -->
+                    <div class="mt-6 bg-black bg-opacity-30 rounded-lg p-4">
+                        <h3 class="font-bold text-lg mb-3">📊 Fuerzas:</h3>
+                        <div class="text-sm space-y-1">
+                            <p><span class="text-yellow-300">Peso (P):</span> {{datosDinamica.peso}} N</p>
+                            <p><span class="text-red-300">Px (paralela):</span> {{datosDinamica.px}} N</p>
+                            <p><span class="text-green-300">Py (perpendicular):</span> {{datosDinamica.py}} N</p>
+                            <p><span class="text-blue-300">Normal (N):</span> {{datosDinamica.normal}} N</p>
+                            <p class="text-gray-400 text-xs mt-2">N = Py (equilibrio vertical)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas -->
+                <div class="lg:col-span-2 bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-4">
+                    <canvas id="canvasDinamica" width="800" height="600" class="w-full rounded-lg bg-gray-900"></canvas>
+                    <div class="mt-4 text-white text-sm bg-black bg-opacity-50 rounded-lg p-3">
+                        <p class="mb-1">🎨 <strong>Visualización de fuerzas:</strong></p>
+                        <ul class="list-disc list-inside space-y-1 text-gray-300">
+                            <li><span class="text-yellow-400">Amarillo:</span> Peso total (P = m·g)</li>
+                            <li><span class="text-red-400">Rojo:</span> Componente paralela (Px = P·sen(θ))</li>
+                            <li><span class="text-green-400">Verde:</span> Componente perpendicular (Py = P·cos(θ))</li>
+                            <li><span class="text-blue-400">Azul:</span> Fuerza Normal (N = Py)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- Otros Módulos -->
-            <div v-show="modulo !== 'cinematica'" class="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-8 text-white text-center">
+            <div v-show="modulo !== 'cinematica' && modulo !== 'dinamica'" class="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-8 text-white text-center">
                 <h2 class="text-3xl font-bold mb-4">
-                    <span v-if="modulo === 'dinamica'">⚙️ Planos Inclinados</span>
                     <span v-if="modulo === 'optica'">🔬 Lentes y Espejos</span>
                     <span v-if="modulo === 'electromagnetismo'">🧲 Regla de la Mano Derecha</span>
                 </h2>
@@ -152,13 +219,30 @@
                     ctx: null,
                     escala: 10,
                     offsetX: 50,
-                    offsetY: 500
+                    offsetY: 500,
+                    // Dinámica
+                    angPlano: 30,
+                    masa: 10,
+                    gPlano: 9.8,
+                    mostrarVectores: true,
+                    canvasDinamica: null,
+                    ctxDinamica: null,
+                    datosDinamica: {
+                        peso: '0',
+                        px: '0',
+                        py: '0',
+                        normal: '0'
+                    }
                 };
             },
             mounted() {
                 this.canvas = document.getElementById('micanvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.dibujarEscena();
+                
+                this.canvasDinamica = document.getElementById('canvasDinamica');
+                this.ctxDinamica = this.canvasDinamica.getContext('2d');
+                this.actualizarPlano();
             },
             methods: {
                 dibujarEscena() {
@@ -328,6 +412,199 @@
                     this.volando = false;
                     this.datos = null;
                     this.dibujarEscena();
+                },
+                
+                // MÉTODOS DE DINÁMICA
+                actualizarPlano() {
+                    const c = this.ctxDinamica;
+                    const w = this.canvasDinamica.width;
+                    const h = this.canvasDinamica.height;
+                    
+                    // Calcular fuerzas
+                    const rad = this.angPlano * Math.PI / 180;
+                    const peso = this.masa * this.gPlano;
+                    const px = peso * Math.sin(rad);
+                    const py = peso * Math.cos(rad);
+                    
+                    this.datosDinamica = {
+                        peso: peso.toFixed(1),
+                        px: px.toFixed(1),
+                        py: py.toFixed(1),
+                        normal: py.toFixed(1)
+                    };
+                    
+                    // Limpiar canvas
+                    c.fillStyle = '#0a0a1a';
+                    c.fillRect(0, 0, w, h);
+                    
+                    // Cuadrícula
+                    c.strokeStyle = '#333366';
+                    c.lineWidth = 1;
+                    for (let x = 0; x < w; x += 40) {
+                        c.beginPath();
+                        c.moveTo(x, 0);
+                        c.lineTo(x, h);
+                        c.stroke();
+                    }
+                    for (let y = 0; y < h; y += 40) {
+                        c.beginPath();
+                        c.moveTo(0, y);
+                        c.lineTo(w, y);
+                        c.stroke();
+                    }
+                    
+                    // Dibujar plano inclinado
+                    const baseX = 150;
+                    const baseY = 450;
+                    const largo = 400;
+                    const finalX = baseX + largo * Math.cos(rad);
+                    const finalY = baseY - largo * Math.sin(rad);
+                    
+                    // Plano
+                    c.fillStyle = '#3a5a6a';
+                    c.beginPath();
+                    c.moveTo(baseX, baseY);
+                    c.lineTo(finalX, finalY);
+                    c.lineTo(finalX, baseY);
+                    c.closePath();
+                    c.fill();
+                    
+                    c.strokeStyle = '#00aaff';
+                    c.lineWidth = 4;
+                    c.beginPath();
+                    c.moveTo(baseX, baseY);
+                    c.lineTo(finalX, finalY);
+                    c.stroke();
+                    
+                    // Suelo
+                    c.fillStyle = '#2a4858';
+                    c.fillRect(0, baseY, w, h - baseY);
+                    c.strokeStyle = '#00aaff';
+                    c.lineWidth = 3;
+                    c.beginPath();
+                    c.moveTo(0, baseY);
+                    c.lineTo(w, baseY);
+                    c.stroke();
+                    
+                    // Bloque
+                    const tamBloque = 40;
+                    const bloqueX = baseX + 100;
+                    const bloqueY = baseY - 100 * Math.tan(rad) - tamBloque / 2;
+                    
+                    c.save();
+                    c.translate(bloqueX, bloqueY);
+                    c.rotate(-rad);
+                    
+                    c.fillStyle = '#ff6b6b';
+                    c.strokeStyle = '#ffffff';
+                    c.lineWidth = 2;
+                    c.fillRect(-tamBloque/2, -tamBloque/2, tamBloque, tamBloque);
+                    c.strokeRect(-tamBloque/2, -tamBloque/2, tamBloque, tamBloque);
+                    
+                    // Etiqueta masa
+                    c.rotate(rad);
+                    c.fillStyle = '#ffffff';
+                    c.font = 'bold 14px Arial';
+                    c.textAlign = 'center';
+                    c.fillText(this.masa + ' kg', 0, 5);
+                    
+                    c.restore();
+                    
+                    // Dibujar vectores si están activados
+                    if (this.mostrarVectores) {
+                        const escalaVector = 2.5;
+                        const centroX = bloqueX;
+                        const centroY = bloqueY;
+                        
+                        // Vector Peso (amarillo) - siempre hacia abajo
+                        this.dibujarFlechaDinamica(
+                            centroX, centroY,
+                            centroX, centroY + peso * escalaVector,
+                            '#ffff00', 'P'
+                        );
+                        
+                        // Vector Px (rojo) - paralelo al plano hacia abajo
+                        const pxEndX = centroX + px * escalaVector * Math.cos(rad);
+                        const pxEndY = centroY + px * escalaVector * Math.sin(rad);
+                        this.dibujarFlechaDinamica(
+                            centroX, centroY,
+                            pxEndX, pxEndY,
+                            '#ff3333', 'Px'
+                        );
+                        
+                        // Vector Py (verde) - perpendicular al plano
+                        const pyEndX = centroX - py * escalaVector * Math.sin(rad);
+                        const pyEndY = centroY + py * escalaVector * Math.cos(rad);
+                        this.dibujarFlechaDinamica(
+                            centroX, centroY,
+                            pyEndX, pyEndY,
+                            '#33ff33', 'Py'
+                        );
+                        
+                        // Vector Normal (azul) - opuesto a Py
+                        const nEndX = centroX + py * escalaVector * Math.sin(rad);
+                        const nEndY = centroY - py * escalaVector * Math.cos(rad);
+                        this.dibujarFlechaDinamica(
+                            centroX, centroY,
+                            nEndX, nEndY,
+                            '#3333ff', 'N'
+                        );
+                    }
+                    
+                    // Mostrar ángulo
+                    c.strokeStyle = '#ffffff';
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.arc(baseX, baseY, 50, 0, -rad, true);
+                    c.stroke();
+                    
+                    c.fillStyle = '#ffffff';
+                    c.font = 'bold 16px Arial';
+                    c.fillText('θ = ' + this.angPlano + '°', baseX + 60, baseY - 10);
+                },
+                
+                dibujarFlechaDinamica(x1, y1, x2, y2, color, etiqueta) {
+                    const c = this.ctxDinamica;
+                    c.strokeStyle = color;
+                    c.fillStyle = color;
+                    c.lineWidth = 3;
+                    
+                    // Línea
+                    c.beginPath();
+                    c.moveTo(x1, y1);
+                    c.lineTo(x2, y2);
+                    c.stroke();
+                    
+                    // Punta
+                    const ang = Math.atan2(y2 - y1, x2 - x1);
+                    const largo = 12;
+                    c.beginPath();
+                    c.moveTo(x2, y2);
+                    c.lineTo(x2 - largo * Math.cos(ang - Math.PI / 6), y2 - largo * Math.sin(ang - Math.PI / 6));
+                    c.lineTo(x2 - largo * Math.cos(ang + Math.PI / 6), y2 - largo * Math.sin(ang + Math.PI / 6));
+                    c.closePath();
+                    c.fill();
+                    
+                    // Etiqueta
+                    c.fillStyle = color;
+                    c.font = 'bold 14px Arial';
+                    c.textAlign = 'center';
+                    const labelX = (x1 + x2) / 2 + 15;
+                    const labelY = (y1 + y2) / 2 - 5;
+                    c.fillText(etiqueta, labelX, labelY);
+                },
+                
+                toggleVectores() {
+                    this.mostrarVectores = !this.mostrarVectores;
+                    this.actualizarPlano();
+                },
+                
+                resetearPlano() {
+                    this.angPlano = 30;
+                    this.masa = 10;
+                    this.gPlano = 9.8;
+                    this.mostrarVectores = true;
+                    this.actualizarPlano();
                 }
             }
         }).mount('#app');
